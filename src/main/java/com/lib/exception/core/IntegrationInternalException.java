@@ -2,13 +2,13 @@ package com.lib.exception.core;
 
 import com.lib.exception.enums.ExceptionEnum;
 
-public class IntegrationException extends ApiException {
+public class IntegrationInternalException extends ApiException {
 
-    public IntegrationException() {
+    public IntegrationInternalException() {
         super(ExceptionEnum.INTEGRATION_ERROR);
     }
 
-    public IntegrationException(String detail) {
+    public IntegrationInternalException(String detail) {
         super(ExceptionEnum.INTEGRATION_ERROR, detail);
     }
 }
