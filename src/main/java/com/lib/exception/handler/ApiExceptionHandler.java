@@ -3,6 +3,7 @@ package com.lib.exception.handler;
 import com.lib.exception.core.ApiException;
 import com.lib.exception.response.ApiErrorResponse;
 import com.lib.exception.response.ApiValidationErrorResponse;
+import com.lib.exception.response.ValidationFieldError;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -43,18 +44,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiValidationErrorResponse> handleValidation(MethodArgumentNotValidException e) {
-        List<String> errors = e.getBindingResult().getFieldErrors().stream()
-                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+        List<ValidationFieldError> errors = e.getBindingResult().getFieldErrors().stream()
+                .map(fe -> new ValidationFieldError(fe.getField(), fe.getDefaultMessage()))
                 .toList();
-        var response = new ApiValidationErrorResponse(
-                HttpStatus.BAD_REQUEST.value(),
-                HttpStatus.BAD_REQUEST.name(),
-                "Validation error",
-                errors,
-                LocalDateTime.now()
-        );
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiValidationErrorResponse(errors));
     }
 
     @ExceptionHandler(Exception.class)
