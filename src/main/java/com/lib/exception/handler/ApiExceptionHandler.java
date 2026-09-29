@@ -48,7 +48,8 @@ public class ApiExceptionHandler {
                 .map(fe -> new ValidationFieldError(fe.getField(), fe.getDefaultMessage()))
                 .toList();
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiValidationErrorResponse(errors));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiValidationErrorResponse(HttpStatus.BAD_REQUEST.value(), LocalDateTime.now(), errors));
     }
 
     @ExceptionHandler(Exception.class)
