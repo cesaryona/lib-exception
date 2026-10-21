@@ -4,18 +4,24 @@ import com.lib.exception.core.ApiException;
 import com.lib.exception.response.ApiErrorResponse;
 import com.lib.exception.response.ApiValidationErrorResponse;
 import com.lib.exception.response.ValidationFieldError;
+import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @ControllerAdvice
-public class ApiExceptionHandler {
+public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiErrorResponse> handleApiException(ApiException e) {
@@ -42,14 +48,41 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiValidationErrorResponse> handleValidation(MethodArgumentNotValidException e) {
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiErrorResponse> handleOptimisticLocking(OptimisticLockingFailureException e) {
+        var response = new ApiErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.name(),
+                "Resource changed by another request, try again",
+                LocalDateTime.now()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         List<ValidationFieldError> errors = e.getBindingResult().getFieldErrors().stream()
                 .map(fe -> new ValidationFieldError(fe.getField(), fe.getDefaultMessage()))
                 .toList();
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiValidationErrorResponse(HttpStatus.BAD_REQUEST.value(), LocalDateTime.now(), errors));
+        var body = new ApiValidationErrorResponse(HttpStatus.BAD_REQUEST.value(), LocalDateTime.now(), errors);
+        return super.handleExceptionInternal(e, body, headers, HttpStatus.BAD_REQUEST, request);
+    }
+
+    @Override
+    protected @Nullable ResponseEntity<Object> handleExceptionInternal(
+            Exception e, @Nullable Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+        var status = HttpStatus.resolve(statusCode.value());
+        var response = new ApiErrorResponse(
+                statusCode.value(),
+                status != null ? status.name() : String.valueOf(statusCode.value()),
+                status != null ? status.getReasonPhrase() : null,
+                LocalDateTime.now()
+        );
+
+        return super.handleExceptionInternal(e, response, headers, statusCode, request);
     }
 
     @ExceptionHandler(Exception.class)
